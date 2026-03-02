@@ -1,10 +1,10 @@
 
 import { LogEntry, VulnerabilityCategory } from '../types';
 
-// Exhaustive Checklist based on User Requirement
+// Exhaustive Checklist based on User Requirement (Enhanced with PDF findings)
 export const VAPT_CHECKLIST = [
   // 1. Web App - Auth & Authz
-  { category: VulnerabilityCategory.AUTH, label: 'Testing Password Policies & Brute Force' },
+  { category: VulnerabilityCategory.AUTH, label: 'Testing Rate Limiting Implementation' },
   { category: VulnerabilityCategory.AUTH, label: 'Verifying MFA Bypass & Session Fixation' },
   { category: VulnerabilityCategory.AUTH, label: 'Checking Privilege Escalation (Horizontal/Vertical)' },
   
@@ -26,24 +26,26 @@ export const VAPT_CHECKLIST = [
   { category: VulnerabilityCategory.LOGIC, label: 'Testing Payment Manipulation Flaws' },
   { category: VulnerabilityCategory.LOGIC, label: 'Checking Workflow Bypasses' },
   
-  // 6. File Upload
+  // 6. File Upload & Directory Security
   { category: VulnerabilityCategory.FILE_UPLOAD, label: 'Testing Malicious File Uploads (RCE)' },
-  { category: VulnerabilityCategory.FILE_UPLOAD, label: 'Verifying MIME Type Validation' },
+  { category: VulnerabilityCategory.FILE_UPLOAD, label: 'Checking Sensitive Data Disclosure via Public File Directory' },
   
   // 7. Security Headers & Error Handling
-  { category: VulnerabilityCategory.HEADERS, label: 'Analyzing HTTP Security Headers' },
-  { category: VulnerabilityCategory.INFRA, label: 'Checking Stack Trace Leakage' },
+  { category: VulnerabilityCategory.HEADERS, label: 'Analyzing HTTP Security Headers (CSP, HSTS)' },
+  { category: VulnerabilityCategory.HEADERS, label: 'Checking for Web Server Banner Disclosure' },
+  { category: VulnerabilityCategory.HEADERS, label: 'Checking for X-Powered-By Header Disclosure' },
+  { category: VulnerabilityCategory.INFRA, label: 'Checking Improper Error Handling & Stack Trace Leakage' },
   
   // 8. API Security
   { category: VulnerabilityCategory.API, label: 'Testing for BOLA / IDOR' },
-  { category: VulnerabilityCategory.API, label: 'Checking Excessive Data Exposure' },
-  { category: VulnerabilityCategory.API, label: 'Verifying Rate Limiting & Throttling' },
+  { category: VulnerabilityCategory.API, label: 'Checking API Endpoint Exposure in Client-Side JavaScript' },
+  { category: VulnerabilityCategory.API, label: 'Verifying Insecure HTTP Methods (TRACE & OPTIONS)' },
   
-  // 9. Infrastructure & Cloud
+  // 9. Infrastructure & Network
   { category: VulnerabilityCategory.INFRA, label: 'Port Scanning & Service Fingerprinting' },
+  { category: VulnerabilityCategory.INFRA, label: 'Detecting Unfiltered Closed Ports' },
+  { category: VulnerabilityCategory.INFRA, label: 'Checking HTTP (Port 80) Service Redirection' },
   { category: VulnerabilityCategory.INFRA, label: 'Checking SSL/TLS Configuration' },
-  { category: VulnerabilityCategory.CLOUD, label: 'Scanning Public Cloud Buckets (S3/GCS)' },
-  { category: VulnerabilityCategory.CLOUD, label: 'Auditing IAM Roles & Serverless Functions' },
   
   // 10. DNS & Network
   { category: VulnerabilityCategory.DNS, label: 'Enumerating Subdomains & DNS Zones' },

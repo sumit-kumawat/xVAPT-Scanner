@@ -1,5 +1,5 @@
 {
-  "name": "xVAPT Scanner",
+  "name": "VAPT_Scanner",
   "description": "A professional-grade Vulnerability Assessment & Penetration Testing dashboard. Features automated recon, OWASP Top 10 analysis, and AI-powered reporting.",
   "requestFramePermissions": []
 }

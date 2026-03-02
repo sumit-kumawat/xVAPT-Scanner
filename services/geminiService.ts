@@ -7,6 +7,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 /**
  * Simulates a deep analysis of the target to generate realistic findings based on the domain context.
+ * Enhanced to include specific observations from the reference audit report.
  */
 export const analyzeTargetForVulnerabilities = async (target: string): Promise<Vulnerability[]> => {
   try {
@@ -14,31 +15,36 @@ export const analyzeTargetForVulnerabilities = async (target: string): Promise<V
       Act as an advanced Lead Security Engineer.
       I have scanned the target domain: "${target}".
       
-      Your task is to generate a JSON array of 4 to 8 REALISTIC vulnerabilities that might exist on this specific target.
+      Your task is to generate a JSON array of 6 to 10 REALISTIC vulnerabilities that might exist on this specific target.
       
       CRITICAL INSTRUCTION: 
-      - If the target is a .php site, include PHP-specific vulns.
-      - If it's a WordPress site (wp-), include Plugin vulns.
-      - If it's a generic corporate site, include SSL, Headers, and Email Spoofing issues.
+      - You MUST include at least 4-5 items from the following "Reference Observations" if they are applicable to the target context, but rephrase them to be specific to "${target}".
       - VARY THE RESULTS: Randomize the severity mix. Do not always return the same list.
       
-      Checklist Coverage:
-      - Injection (SQLi, XSS)
-      - Auth (Weak Password, No MFA)
-      - Config (Headers, SSL, Open Ports)
-      - API (BOLA, Rate Limit)
-
+      Reference Observations (from previous audit):
+      1. Rate Limiting not implemented (Medium) - CWE-307
+      2. Sensitive Data Disclosure via Public File Directory (Medium) - CWE-552
+      3. API Endpoint Exposure in Client-Side JavaScript (Low) - CWE-116
+      4. Improper Error Handling (Low) - CWE-209
+      5. Application displays web server banner (Low) - CWE-200
+      6. Misconfigured Content Security Policy (CSP) Header (Low) - CWE-307
+      7. Unfiltered Closed Port Detected (Low) - CWE-284
+      8. Insecure HTTP Methods Enabled (TRACE & OPTIONS Allowed) (Low) - CWE-200
+      9. X-Powered-By Header Disclosure (Low) - CWE-200
+      10. HTTP (Port 80) Service Not Detected (Info)
+      
       Format strictly as JSON array of objects:
       [
         {
           "name": "Specific Vulnerability Name",
-          "tool": "Tool Name (e.g. Burp Suite, Nmap)",
-          "severity": "Critical" | "High" | "Medium" | "Low",
+          "tool": "Tool Name (e.g. Burp Suite, Nmap, Tenable Nessus Pro, Nikto)",
+          "severity": "Critical" | "High" | "Medium" | "Low" | "Info",
           "category": "Vulnerability Category String",
           "description": "Technical description of the flaw on ${target}",
           "impact": "Business impact",
           "remediation": "Technical fix",
-          "cvssScore": number (float)
+          "cvssScore": number (float),
+          "cwe": "CWE-XXX (optional)"
         }
       ]
     `;

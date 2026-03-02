@@ -40,6 +40,7 @@ export interface Vulnerability {
   impact?: string;
   remediation: string;
   cvssScore?: number;
+  cwe?: string;
   evidence?: string;
   verified?: boolean; // New: status after re-test
 }

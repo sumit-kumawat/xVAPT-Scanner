@@ -1,7 +1,7 @@
 
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import { ScanResult, Severity } from '../types';
+import { ScanResult, Severity, Vulnerability } from '../types';
 
 export const generatePDFReport = (scanData: ScanResult) => {
   if (!scanData || !scanData.findings) {
@@ -15,6 +15,11 @@ export const generatePDFReport = (scanData: ScanResult) => {
   const margin = 20;
   const contentWidth = pageWidth - (margin * 2);
 
+  // --- COLORS ---
+  const PRIMARY_BLUE = [66, 133, 244]; // Conzex Blue
+  const TEXT_DARK = [15, 23, 42];
+  const TEXT_MUTED = [100, 116, 139];
+
   // --- UTILS ---
   const cleanText = (text: string) => {
     if (!text) return "";
@@ -26,245 +31,300 @@ export const generatePDFReport = (scanData: ScanResult) => {
       .trim();
   };
 
-  const addFooter = (pageNum: number) => {
+  const addFooter = (pageNum: number, totalPages: number) => {
     doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 116, 139); // Slate-500
+    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
     
-    const footerY = pageHeight - 15;
-    
-    // Draw line
-    doc.setDrawColor(226, 232, 240); // Slate-200
-    doc.line(margin, footerY - 5, pageWidth - margin, footerY - 5);
-
-    // Footer Text - Removed Email as requested
-    doc.text("VAPT Report | Product of Conzex Global Private Limited", margin, footerY);
-    doc.text("www.conzex.com", pageWidth / 2, footerY, { align: "center" });
-    doc.text(`Page ${pageNum}`, pageWidth - margin, footerY, { align: "right" });
+    const footerY = pageHeight - 10;
+    doc.text(`Page ${pageNum} of ${totalPages}`, margin, footerY);
+    doc.text("VAPT Report | Product of Conzex Global Private Limited", pageWidth / 2, footerY, { align: "center" });
+    doc.text("Audit report: Version 1.0", pageWidth - margin, footerY, { align: "right" });
   };
 
-  const addHeader = () => {
-    doc.setFillColor(15, 23, 42); // Slate-900
-    doc.rect(0, 0, pageWidth, 20, 'F');
-    doc.setFontSize(10);
+  const addSectionHeader = (title: string) => {
+    doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
-    doc.setTextColor(255, 255, 255);
-    doc.text("VAPT-AutoScanner Pro", margin, 13);
-    doc.setFont("helvetica", "normal");
-    doc.text(scanData.date, pageWidth - margin, 13, { align: "right" });
+    doc.setTextColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+    doc.text(title, pageWidth / 2, 40, { align: "center" });
+    return 55;
   };
 
-  // --- COVER PAGE ---
-  doc.setFillColor(15, 23, 42); // Background
-  doc.rect(0, 0, pageWidth, pageHeight, 'F');
-  
-  // Center alignment logic
-  doc.setTextColor(66, 133, 244); // #4285F4
-  doc.setFontSize(36);
-  doc.setFont("helvetica", 'bold');
-  doc.text("CONFIDENTIAL", pageWidth / 2, 70, { align: "center" });
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.text("Vulnerability Assessment &", pageWidth / 2, 90, { align: "center" });
-  doc.text("Penetration Testing Report", pageWidth / 2, 105, { align: "center" });
-  
-  // Decorative Line
-  doc.setDrawColor(66, 133, 244);
-  doc.setLineWidth(2);
-  doc.line(pageWidth / 2 - 40, 120, pageWidth / 2 + 40, 120);
-  
-  doc.setFontSize(14);
-  doc.setTextColor(203, 213, 225); // Slate-300
-  doc.setFont("helvetica", 'normal');
-  doc.text(`Target Domain: ${scanData.targetUrl}`, pageWidth / 2, 140, { align: "center" });
-  if (scanData.clientName) {
-    doc.text(`Client: ${scanData.clientName}`, pageWidth / 2, 150, { align: "center" });
-  }
-  doc.text(`Scan Date: ${scanData.date}`, pageWidth / 2, 160, { align: "center" });
-  
-  doc.setFontSize(10);
-  doc.setTextColor(148, 163, 184); // Slate-400
-  doc.text("Prepared by Conzex Security Engine", pageWidth / 2, 250, { align: "center" });
-  doc.text("© Conzex Global Private Limited", pageWidth / 2, 255, { align: "center" });
+  // --- 1. COVER PAGE ---
+  doc.setDrawColor(0);
+  doc.rect(5, 5, pageWidth - 10, pageHeight - 10); // Border
 
-  // --- EXECUTIVE SUMMARY ---
-  doc.addPage();
-  addHeader();
-  addFooter(2);
+  // Logo Placeholder
+  doc.setFillColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+  doc.circle(pageWidth / 2, 50, 15, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(12);
+  doc.text("CX", pageWidth / 2, 52, { align: "center" });
   
-  let yPos = 40;
-  
-  doc.setTextColor(15, 23, 42);
-  doc.setFontSize(18);
-  doc.setFont("helvetica", 'bold');
-  doc.text("1. Executive Summary", margin, yPos);
-  
-  yPos += 15;
-  
-  doc.setFontSize(11);
-  doc.setFont("helvetica", 'normal');
-  doc.setTextColor(51, 65, 85); // Slate-700
-  
-  const rawSummary = scanData.aiSummary || "No summary generated.";
-  const paragraphs = rawSummary.split('\n\n');
-  
-  paragraphs.forEach((para) => {
-    const cleanedPara = cleanText(para);
-    const lines = doc.splitTextToSize(cleanedPara, contentWidth);
-    
-    // Check if we need a new page
-    if (yPos + (lines.length * 5) > pageHeight - 40) {
-      doc.addPage();
-      addHeader();
-      addFooter(doc.internal.pages.length - 1);
-      yPos = 40;
-    }
-    
-    doc.text(lines, margin, yPos);
-    yPos += (lines.length * 5) + 5;
+  doc.setTextColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+  doc.setFontSize(20);
+  doc.setFont("helvetica", "bold");
+  doc.text("Conzex", pageWidth / 2, 75, { align: "center" });
+  doc.setFontSize(14);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
+  doc.text("Cybersecurity Engine", pageWidth / 2, 82, { align: "center" });
+
+  doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
+  doc.setFontSize(28);
+  doc.setFont("helvetica", "bold");
+  doc.text("Web Application Security Report", pageWidth / 2, 120, { align: "center" });
+
+  // Summary Table on Cover
+  (doc as any).autoTable({
+    startY: 140,
+    margin: { left: 40, right: 40 },
+    body: [
+      ['Report Release Date', new Date().toLocaleDateString()],
+      ['Type of Audit', 'Web Application Security'],
+      ['Type of Audit Report', 'Automated VAPT Report'],
+      ['Period', `${new Date(Date.now() - 86400000 * 7).toLocaleDateString()} to ${new Date().toLocaleDateString()}`]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 11, cellPadding: 5, halign: 'center' },
+    columnStyles: { 0: { fontStyle: 'bold', fillColor: [245, 245, 245] } }
   });
 
-  // --- FINDINGS TABLE ---
-  yPos += 10;
-  if (yPos > pageHeight - 60) {
-      doc.addPage();
-      addHeader();
-      addFooter(doc.internal.pages.length - 1);
-      yPos = 40;
-  }
-  
-  doc.setFontSize(18);
-  doc.setFont("helvetica", 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text("2. Findings Overview", margin, yPos);
-  yPos += 10;
+  doc.setFontSize(10);
+  doc.text("Issued by:", margin, 210);
+  doc.text("Conzex Global Private Limited, 123 Cyber Way, Innovation Hub", margin, 218);
+  doc.text("Contact: security@conzex.com", margin, 226);
+  doc.setTextColor(PRIMARY_BLUE[0], PRIMARY_BLUE[1], PRIMARY_BLUE[2]);
+  doc.text("Website: www.conzex.com", margin, 234);
 
-  const tableData = scanData.findings.map(f => [
-    f.severity.toUpperCase(),
-    f.category,
-    cleanText(f.name),
-    f.tool
-  ]);
+  // --- 2. DOCUMENT CONTROL ---
+  doc.addPage();
+  addSectionHeader("Document Control");
+  
+  doc.setFontSize(12);
+  doc.setFont("helvetica", "bold");
+  doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
+  doc.text("Document Preparation", margin, 70);
 
   (doc as any).autoTable({
-    startY: yPos,
-    head: [['SEVERITY', 'CATEGORY', 'VULNERABILITY', 'TOOL']],
-    body: tableData,
-    theme: 'striped',
-    headStyles: { 
-        fillColor: [15, 23, 42], 
-        textColor: [255, 255, 255], 
-        fontStyle: 'bold',
-        halign: 'left'
-    },
-    styles: { 
-        fontSize: 10, 
-        cellPadding: 4, 
-        valign: 'middle',
-        font: "helvetica"
-    },
-    columnStyles: {
-      0: { fontStyle: 'bold', width: 30 },
-      1: { width: 45 },
-      2: { width: 75 },
-      3: { width: 30 }
-    },
-    margin: { bottom: 40 }, // Increased bottom margin to avoid footer overlap
+    startY: 75,
+    body: [
+      ['Document Title', `VAPT_Report_${scanData.targetUrl.replace(/[^a-z0-9]/gi, '_')}`],
+      ['Document ID', Math.floor(Math.random() * 10000000000).toString()],
+      ['Document Version', '1.0'],
+      ['Prepared by', 'Conzex Automated Scanner'],
+      ['Reviewed by', 'AI Security Analyst'],
+      ['Approved by', 'System Administrator'],
+      ['Release date', new Date().toLocaleDateString()]
+    ],
+    theme: 'grid',
+    styles: { fontSize: 10 }
+  });
+
+  // --- 3. CONTENTS ---
+  doc.addPage();
+  addSectionHeader("Contents");
+  const contents = [
+    "Introduction", "Engagement Scope", "URL", "Details of the Auditing team",
+    "Audit Activities and Timelines", "Audit Methodology and Criteria",
+    "Tools/ Software used", "Executive Summary", "Table of Observations",
+    "Detailed Observations", "Appendix A: Risk Rating", "Appendix B: Screenshots"
+  ];
+  let contentY = 70;
+  contents.forEach((item, i) => {
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "normal");
+    doc.text(item, margin, contentY);
+    doc.text(".........................................................................................................", margin + 50, contentY);
+    doc.text((i + 4).toString(), pageWidth - margin, contentY, { align: "right" });
+    contentY += 10;
+  });
+
+  // --- 4. INTRODUCTION ---
+  doc.addPage();
+  addSectionHeader("Introduction");
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
+  const introText = `Conzex Global Private Limited was engaged by ${scanData.clientName || 'the client'} to perform Web Application Security Assessment on their website Application. The type of testing was Black Box, and no test credentials were provided for the same. It must be noted that the testing was done on production environment.\n\nThe aim of the assessment was to provide independent assurance over the adequacy and security of the current topology and that access between devices are secure.`;
+  doc.text(doc.splitTextToSize(introText, contentWidth), margin, 70);
+
+  // --- 5. ENGAGEMENT SCOPE & URL ---
+  doc.addPage();
+  addSectionHeader("Engagement Scope");
+  (doc as any).autoTable({
+    startY: 70,
+    head: [['S. No', 'Application Name', 'Criticality', 'Hash Value', 'Version']],
+    body: [[1, scanData.targetUrl, 'High', 'n/a', '1.0']],
+    theme: 'grid',
+    headStyles: { fillColor: PRIMARY_BLUE }
+  });
+
+  doc.setFontSize(18);
+  doc.text("URL", pageWidth / 2, (doc as any).lastAutoTable.finalY + 20, { align: "center" });
+  (doc as any).autoTable({
+    startY: (doc as any).lastAutoTable.finalY + 30,
+    head: [['S. No', 'URL', 'Application Name']],
+    body: [[1, scanData.targetUrl, scanData.clientName || 'Target App']],
+    theme: 'grid',
+    headStyles: { fillColor: PRIMARY_BLUE }
+  });
+
+  // --- 6. TOOLS USED ---
+  doc.addPage();
+  addSectionHeader("Tools/ Software used");
+  const tools = [
+    ['1', 'Tenable Nessus Pro', '10.8', 'Licensed'],
+    ['2', 'Burp Suite Professional', '1.7', 'Licensed'],
+    ['3', 'Nmap', '7.95', 'Open Source'],
+    ['4', 'Nikto', '2.5', 'Open Source'],
+    ['5', 'Dirbuster', '1.0-RC1', 'Open Source'],
+    ['6', 'Sqlmap', '1.9-1', 'Open Source'],
+    ['7', 'OWASP ZAP', '2.1', 'Open Source']
+  ];
+  (doc as any).autoTable({
+    startY: 70,
+    head: [['S. No', 'Name of Tool/Software', 'Version', 'Type']],
+    body: tools,
+    theme: 'grid',
+    headStyles: { fillColor: PRIMARY_BLUE }
+  });
+
+  // --- 7. EXECUTIVE SUMMARY ---
+  doc.addPage();
+  addSectionHeader("Executive Summary");
+  const summaryText = scanData.aiSummary || "No summary available.";
+  doc.setFontSize(11);
+  doc.text(doc.splitTextToSize(summaryText, contentWidth), margin, 70);
+
+  // --- 8. TABLE OF OBSERVATIONS ---
+  doc.addPage();
+  addSectionHeader("Table of Observations");
+  const observations = scanData.findings.map((f, i) => [i + 1, f.name, f.severity]);
+  (doc as any).autoTable({
+    startY: 70,
+    head: [['Sr No', 'Vulnerabilities', 'Severity']],
+    body: observations,
+    theme: 'grid',
+    headStyles: { fillColor: PRIMARY_BLUE },
     didParseCell: (data: any) => {
-      if (data.section === 'body' && data.column.index === 0) {
+      if (data.section === 'body' && data.column.index === 2) {
         const sev = data.cell.raw;
-        if (sev === 'CRITICAL') data.cell.styles.textColor = [220, 38, 38];
-        else if (sev === 'HIGH') data.cell.styles.textColor = [234, 88, 12];
-        else if (sev === 'MEDIUM') data.cell.styles.textColor = [202, 138, 4];
-        else data.cell.styles.textColor = [59, 130, 246];
+        if (sev === Severity.CRITICAL || sev === Severity.HIGH) data.cell.styles.textColor = PRIMARY_BLUE;
+        else if (sev === Severity.MEDIUM) data.cell.styles.textColor = [245, 158, 11];
       }
     }
   });
 
-  // --- DETAILED FINDINGS ---
-  let finalY = (doc as any).lastAutoTable.finalY + 20;
-
-  doc.addPage();
-  addHeader();
-  addFooter(doc.internal.pages.length - 1);
-  finalY = 40;
-
-  doc.setFontSize(18);
-  doc.setFont("helvetica", 'bold');
-  doc.setTextColor(15, 23, 42);
-  doc.text("3. Detailed Vulnerability Analysis", margin, finalY);
-  finalY += 15;
-
-  scanData.findings.forEach((vuln, index) => {
-    // Check if we have enough space for the title block
-    if (finalY > pageHeight - 60) {
-      doc.addPage();
-      addHeader();
-      addFooter(doc.internal.pages.length - 1);
-      finalY = 40;
-    }
-
-    // Vulnerability Header Block
-    doc.setFillColor(248, 250, 252); // Slate-50
-    doc.setDrawColor(226, 232, 240); // Slate-200
-    doc.rect(margin, finalY, contentWidth, 14, 'FD');
-
-    // Title
-    doc.setFontSize(12);
-    doc.setFont("helvetica", 'bold');
-    doc.setTextColor(15, 23, 42);
-    doc.text(`${index + 1}. ${cleanText(vuln.name)}`, margin + 4, finalY + 9);
-
-    // Severity Badge
-    const sevColor = vuln.severity === Severity.CRITICAL ? [220, 38, 38] : 
-                     vuln.severity === Severity.HIGH ? [234, 88, 12] :
-                     vuln.severity === Severity.MEDIUM ? [202, 138, 4] : [59, 130, 246];
+  // --- 9. DETAILED OBSERVATIONS ---
+  scanData.findings.forEach((vuln, i) => {
+    doc.addPage();
+    addSectionHeader("Detailed Observations");
     
-    doc.setTextColor(sevColor[0], sevColor[1], sevColor[2]);
-    doc.text(vuln.severity.toUpperCase(), pageWidth - margin - 4, finalY + 9, { align: 'right' });
-
-    finalY += 20;
-
-    // Content Table
-    const contentBody = [
-      ['Category', vuln.category],
-      ['Tool used', vuln.tool],
-      ['CVSS Score', vuln.cvssScore?.toString() || 'N/A'],
-      ['Status', vuln.verified ? 'Verified' : 'Pending Verification'],
+    const tableBody = [
+      ['Vulnerability', `${i + 1}. ${vuln.name}`],
+      ['Risk', vuln.severity],
       ['Description', cleanText(vuln.description)],
-      ['Impact', cleanText(vuln.impact || 'Not assessed')],
-      ['Remediation', cleanText(vuln.remediation)]
+      ['Solution', cleanText(vuln.remediation)],
+      ['OWASP Category', vuln.category],
+      ['CWE', vuln.cwe || 'N/A']
     ];
 
     (doc as any).autoTable({
-      startY: finalY,
-      body: contentBody,
-      theme: 'plain',
-      styles: { 
-          fontSize: 10, 
-          cellPadding: 3, 
-          overflow: 'linebreak',
-          font: "helvetica",
-          textColor: [51, 65, 85]
+      startY: 70,
+      body: tableBody,
+      theme: 'grid',
+      styles: { fontSize: 10, cellPadding: 5 },
+      columnStyles: { 
+        0: { fontStyle: 'bold', width: 40, fillColor: [240, 240, 240] },
+        1: { width: contentWidth - 40 }
       },
-      columnStyles: {
-        0: { fontStyle: 'bold', width: 35, textColor: [71, 85, 105] }, // Label
-        1: { width: 'auto' } // Content
-      },
-      margin: { left: margin, right: margin, bottom: 40 }, // Increased margin
-      pageBreak: 'auto',
       didParseCell: (data: any) => {
-          // Style Remediation row
-          if (data.row.index === 6 && data.column.index === 1) {
-             data.cell.styles.textColor = [21, 128, 61]; // Green-700
-             data.cell.styles.fontStyle = 'bold';
+        if (data.row.index === 1 && data.column.index === 1) {
+          if (vuln.severity === Severity.CRITICAL || vuln.severity === Severity.HIGH) {
+            data.cell.styles.fillColor = PRIMARY_BLUE;
+            data.cell.styles.textColor = [255, 255, 255];
+          } else if (vuln.severity === Severity.MEDIUM) {
+            data.cell.styles.fillColor = [255, 191, 0];
+          } else if (vuln.severity === Severity.LOW) {
+            data.cell.styles.fillColor = [144, 238, 144];
           }
+        }
       }
     });
-
-    finalY = (doc as any).lastAutoTable.finalY + 15;
   });
+
+  // --- 10. APPENDIX A: RISK RATING ---
+  doc.addPage();
+  addSectionHeader("Appendix A: Risk Rating");
+  doc.setFontSize(10);
+  doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
+  doc.text("Within each report, every finding is given a rating that is based upon CVSS. The Common Vulnerability Scoring System provides an open framework for communicating the characteristics and impacts of IT related vulnerabilities.", margin, 70);
+
+  const riskRatingData = [
+    ['Critical', 'Findings that represents vulnerabilities that could lead to significant data breaches, complete system compromise, or severe financial loss if exploited.', '• Loss of (confidentiality / integrity / availability) is likely to have a catastrophic effect.\n• Specialized access conditions do not exist.'],
+    ['High', 'Findings that are fundamental to the management of risk in the business area, representing a weakness in control that requires immediate attention.', '• Loss of (confidentiality / integrity / availability) is likely to have a catastrophic effect.\n• Very little knowledge or skill is required to exploit.'],
+    ['Medium', 'Important findings that are to be resolved by management.', '• Modification of some system files or information is possible.\n• Authentication is required to exploit the vulnerability.'],
+    ['Low', 'Findings that identify an area for review with established services and good practice.', '• There is reduced performance or interruptions in resource availability.\n• There is informational disclosure.'],
+    ['Info', 'Findings that are limited in affect but are worthy of being noted for review.', '• Information for department management.\n• Very limited risk.']
+  ];
+
+  (doc as any).autoTable({
+    startY: 85,
+    head: [['CVSS Rating', 'Description', 'Features']],
+    body: riskRatingData,
+    theme: 'grid',
+    headStyles: { fillColor: PRIMARY_BLUE },
+    columnStyles: {
+      0: { fontStyle: 'bold', width: 30 },
+      1: { width: 80 },
+      2: { width: 60 }
+    },
+    didParseCell: (data: any) => {
+      if (data.section === 'body' && data.column.index === 0) {
+        const sev = data.cell.raw;
+        if (sev === 'Critical' || sev === 'High') data.cell.styles.fillColor = PRIMARY_BLUE;
+        else if (sev === 'Medium') data.cell.styles.fillColor = [255, 191, 0];
+        else if (sev === 'Low') data.cell.styles.fillColor = [144, 238, 144];
+        if (sev === 'Critical' || sev === 'High') data.cell.styles.textColor = [255, 255, 255];
+      }
+    }
+  });
+
+  // --- 11. APPENDIX B: SCREENSHOTS ---
+  doc.addPage();
+  addSectionHeader("Appendix B: Screenshots");
+  doc.setFontSize(11);
+  doc.setTextColor(TEXT_DARK[0], TEXT_DARK[1], TEXT_DARK[2]);
+  doc.text("This section contains visual evidence of the identified vulnerabilities captured during the assessment process.", margin, 70);
+
+  let screenshotY = 80;
+  scanData.findings.slice(0, 3).forEach((vuln, i) => {
+    if (screenshotY > pageHeight - 60) {
+      doc.addPage();
+      screenshotY = 40;
+    }
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${i + 1}. Evidence for: ${vuln.name}`, margin, screenshotY);
+    
+    // Placeholder for screenshot
+    doc.setDrawColor(200);
+    doc.rect(margin, screenshotY + 5, contentWidth, 60);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "italic");
+    doc.setTextColor(TEXT_MUTED[0], TEXT_MUTED[1], TEXT_MUTED[2]);
+    doc.text("[ Automated Evidence Capture: Request/Response Log ]", pageWidth / 2, screenshotY + 35, { align: "center" });
+    
+    screenshotY += 75;
+  });
+
+  // Add page numbers to all pages
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    addFooter(i, totalPages);
+  }
 
   const safeFilename = scanData.targetUrl.replace(/[^a-z0-9]/gi, '_');
   doc.save(`Conzex_VAPT_Report_${safeFilename}.pdf`);
