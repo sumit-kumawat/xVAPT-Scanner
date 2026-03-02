@@ -2,8 +2,20 @@
 import { GoogleGenAI } from "@google/genai";
 import { Vulnerability, Severity, VulnerabilityCategory } from '../types';
 
-// NOTE: In a real production environment, the API Key should be handled via a secure backend proxy.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Lazy initialization to prevent crashes if API key is missing on startup
+let aiInstance: GoogleGenAI | null = null;
+
+const getAI = () => {
+  if (!aiInstance) {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    if (!apiKey) {
+      console.error("GEMINI_API_KEY is not defined. AI features will be disabled.");
+      return null;
+    }
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
+};
 
 /**
  * Simulates a deep analysis of the target to generate realistic findings based on the domain context.
@@ -11,6 +23,11 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
  */
 export const analyzeTargetForVulnerabilities = async (target: string): Promise<Vulnerability[]> => {
   try {
+    const ai = getAI();
+    if (!ai) {
+      throw new Error("AI Service not initialized. Missing API Key.");
+    }
+
     const prompt = `
       Act as an advanced Lead Security Engineer.
       I have scanned the target domain: "${target}".
@@ -86,6 +103,9 @@ export const analyzeTargetForVulnerabilities = async (target: string): Promise<V
 
 export const generateExecutiveSummary = async (target: string, findings: Vulnerability[]): Promise<string> => {
   try {
+    const ai = getAI();
+    if (!ai) return "AI Summary unavailable: Missing API Key.";
+
     const findingsSummary = findings.map(f => `- [${f.severity}] ${f.name}`).join('\n');
     
     const prompt = `
@@ -116,6 +136,9 @@ export const generateExecutiveSummary = async (target: string, findings: Vulnera
 
 export const generateProofOfConcept = async (vuln: Vulnerability, target: string): Promise<{ command: string, instructions: string }> => {
   try {
+    const ai = getAI();
+    if (!ai) return { command: "# AI Unavailable", instructions: "Missing API Key." };
+
     const prompt = `
       Act as a Senior Penetration Tester.
       Generate a real-world Proof of Concept (PoC) to verify this vulnerability:

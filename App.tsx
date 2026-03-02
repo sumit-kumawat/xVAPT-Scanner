@@ -53,6 +53,14 @@ export default function App() {
   const [systemLogs, setSystemLogs] = useState<SystemLog[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
 
+  // -- CHECK FOR API KEY --
+  useEffect(() => {
+    const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
+    if (!apiKey) {
+      addNotification('warning', 'GEMINI_API_KEY is missing. AI analysis and reporting will be limited. Please set it in your environment variables.');
+    }
+  }, []);
+
   // -- UI STATE --
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState('dashboard');
